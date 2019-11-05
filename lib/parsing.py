@@ -417,6 +417,8 @@ def get_page_extractor(url):
         return CurrentEdXPageExtractor()
     elif url.startswith('https://lagunita.stanford.edu'):
         return CurrentEdXPageExtractor()
+    elif url.startswith('https://learn.familylearning.hk'):
+        return NewEdXPageExtractor()
     else:
         return ClassicEdXPageExtractor()
 
