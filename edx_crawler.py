@@ -681,7 +681,9 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
         video_meta_list = []
         for video_comp in video_flag:
                 video_meta = dict()
-                txtjson = video_comp.find('div',{"data-metadata":True})['data-metadata']
+                video = video_comp.find('div',{"data-metadata":True})
+                txtjson = video['data-metadata']
+                edx_video_id = video['id']
                 txt2dict = json.loads(txtjson)
                 yt_id = re.sub(r"1.00:", '', txt2dict['streams'])
                 if len(txt2dict['streams']) == 0:
@@ -694,14 +696,18 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
                                 except (HTTPError,URLError) as exception:
                                         print('     bug: cannot download video from edx site')
                                         duration = 'n/a'
-                        video_meta.update({'section': section , 'subsection': subsection, 'unit': unit, 'youtube_url':yt_link,'video_source':video_source[0], 'video_duration':duration})
+                        video_meta.update({'section': section , 'subsection': subsection,
+                                           'unit': unit, 'youtube_url': yt_link,'video_source': video_source[0],
+                                           'video_duration': duration, 'video_id': edx_video_id})
                 else:
                         yt_link = 'https://youtu.be/'+ yt_id
                         duration = videolen(yt_link)
                         video_source = 'n/a'
                         if duration == 0:
                                 duration = txt2dict['duration']
-                        video_meta.update({'section': section , 'subsection': subsection, 'unit': unit, 'youtube_url':yt_link,'video_source':video_source, 'video_duration':duration})
+                        video_meta.update({'section': section , 'subsection': subsection,
+                                           'unit': unit, 'youtube_url':yt_link,'video_source': video_source,
+                                           'video_duration':duration, 'video_id': edx_video_id})
 
 
                 
@@ -834,7 +840,7 @@ def save_html_to_file(args, selections, all_urls, headers):
 
                                         
                                         
-                                        soup =unit.prettify(formatter=None)
+                                        soup = unit.prettify(formatter=None)
                                         soup = BeautifulSoup(soup, "html.parser")
 
 
@@ -891,6 +897,8 @@ def save_html_to_file(args, selections, all_urls, headers):
 
                                                 video_dict_ls.update(video_unit_dict)
                                                 video_id +=1
+
+                                        print(video_dict_ls)
 
                                         counter_unit += 1
 
