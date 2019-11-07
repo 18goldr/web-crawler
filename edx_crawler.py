@@ -662,6 +662,14 @@ def extract_speech_period(start_ls,end_ls):
                 period_ls.append(tmp_period)
         return period_ls
 
+def extract_speech_times(start_ls, end_ls):
+    period_ls = []
+
+    for start_time, end_time in zip(start_ls, end_ls):
+        period_ls.append((int(start_time)/1000, int(end_time)/1000))
+
+    return period_ls
+
 def extract_duration_from_non_YT_video(source_mp4,headers):
         print(source_mp4)
         file_name = 'trial_video.mp4' 
@@ -685,6 +693,7 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
                 txtjson = video['data-metadata']
                 edx_video_id = video['id']
                 txt2dict = json.loads(txtjson)
+                start_time = txt2dict['start']
                 yt_id = re.sub(r"1.00:", '', txt2dict['streams'])
                 if len(txt2dict['streams']) == 0:
                         duration = txt2dict['duration']
@@ -698,7 +707,7 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
                                         duration = 'n/a'
                         video_meta.update({'section': section , 'subsection': subsection,
                                            'unit': unit, 'youtube_url': yt_link,'video_source': video_source[0],
-                                           'video_duration': duration, 'video_id': edx_video_id})
+                                           'video_duration': duration, 'video_id': edx_video_id, 'start': start_time})
                 else:
                         yt_link = 'https://youtu.be/'+ yt_id
                         duration = videolen(yt_link)
@@ -707,7 +716,7 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
                                 duration = txt2dict['duration']
                         video_meta.update({'section': section , 'subsection': subsection,
                                            'unit': unit, 'youtube_url':yt_link,'video_source': video_source,
-                                           'video_duration':duration, 'video_id': edx_video_id})
+                                           'video_duration':duration, 'video_id': edx_video_id, 'start': start_time})
 
 
                 
@@ -723,8 +732,14 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
                                 transcript_raw = json.loads(transcript_dump)
                                 #print (transcript_raw)
                                 speech_period = extract_speech_period(transcript_raw['start'],transcript_raw['end'])
+                                speech_times = extract_speech_times(transcript_raw['start'],transcript_raw['end'])
                 
-                                video_meta.update({transcript_name:transcript_raw['text'],'speech_period':speech_period})
+                                video_meta.update({
+                                    transcript_name: transcript_raw['text'],
+                                    'speech_period': speech_period,
+                                    'speech_times': speech_times
+                                })
+                                
                         except (HTTPError,URLError) as exception:
 
                                 print('     bug: cannot download transcript from edx site')
