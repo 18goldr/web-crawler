@@ -95,6 +95,7 @@ class ClassicEdXPageExtractor(PageExtractor):
             unit = self.extract_unit(unit_html, BASE_URL, file_formats)
             if len(unit.videos) > 0 or len(unit.resources_urls) > 0:
                 units.append(unit)
+
         return units
 
     def extract_unit(self, text, BASE_URL, file_formats):
@@ -111,7 +112,7 @@ class ClassicEdXPageExtractor(PageExtractor):
 
         resources_urls = self.extract_resources_urls(text, BASE_URL,
                                                      file_formats)
-        return Unit(videos=videos, resources_urls=resources_urls)
+        return Unit(url=BASE_URL, videos=videos, resources_urls=resources_urls)
 
     def extract_video_youtube_url(self, text):
         re_video_youtube_url = re.compile(r'data-streams=&#34;.*?1.0\d+\:(?:.*?)(.{11})')
@@ -170,7 +171,9 @@ class ClassicEdXPageExtractor(PageExtractor):
         matching the given file formats
         """
         formats = '|'.join(file_formats)
-        re_resources_urls = re.compile(r'&lt;a href=(?:&#34;|")([^"&]*.(?:' + formats + '))(?:&#34;|")')
+        
+        re_resources_urls = re.compile(r'(?:&#34;|")([^"&]*.(?:' + formats + '))(?:&#34;|")')
+        
         resources_urls = []
         for url in re_resources_urls.findall(text):
             if url.startswith('http') or url.startswith('https'):
@@ -187,6 +190,11 @@ class ClassicEdXPageExtractor(PageExtractor):
         resources_urls += youtube_links
 
         return resources_urls
+
+    def extract_regex_of_form(self, text, regex):
+        r = re.compile(regex)
+
+        return r.findall(text)
 
     def extract_sections_from_html(self, page, BASE_URL):
         """
@@ -295,7 +303,7 @@ class CurrentEdXPageExtractor(ClassicEdXPageExtractor):
 
         resources_urls = self.extract_resources_urls(text, BASE_URL,
                                                      file_formats)
-        return Unit(videos=videos, resources_urls=resources_urls)
+        return Unit(url=BASE_URL, videos=videos, resources_urls=resources_urls)
 
     def extract_sections_from_html(self, page, BASE_URL):
         """
@@ -365,6 +373,20 @@ class NewEdXPageExtractor(CurrentEdXPageExtractor):
             except AttributeError:
                 return None
 
+        def _make_units(subsection_soup):
+            try:
+                units_soup = subsection_soup.find_all('li', class_='vertical outline-item focusable')
+
+            except AttributeError:
+                return []
+
+            units = [Unit(url=s.a['href'],
+                          name=s.find('div', {'class': 'vertical-title'}).get_text(strip=True))
+                     for i, s in enumerate(units_soup, 1)]
+
+            return units              
+            
+
         def _make_subsections(section_soup):
             try:
                 subsections_soup = section_soup.find_all('li', class_=["subsection accordion ","subsection accordion","subsection accordion current"])#error was here
@@ -377,7 +399,8 @@ class NewEdXPageExtractor(CurrentEdXPageExtractor):
             # corrected extraction of subsection.name 11 July 2018
             subsections = [SubSection(position=i,
                                       url=s.a['href'],
-                                      name=s.find('h4', {'class' : 'subsection-title'}).get_text(strip=True))
+                                      name=s.find('h4', {'class' : 'subsection-title'}).get_text(strip=True),
+                                      units=_make_units(s))
                            for i, s in enumerate(subsections_soup, 1)]
             
             return subsections

@@ -95,9 +95,9 @@ class SubSection(object):
     """
     Representation of a subsection in a section.
     """
-    def __init__(self, position, name, url):
+    def __init__(self, position, name, url, units):
         """
-        @param position: Integer position of the subsection in the subsection
+        @param position: Integer position of the subsection in the section
             list. Starts at 1.
         @type position: int
 
@@ -110,6 +110,7 @@ class SubSection(object):
         self.position = position
         self.name = name
         self.url = url
+        self.units = units
 
     def __repr__(self):
         return self.name + ": " + self.url
@@ -118,8 +119,17 @@ class Unit(object):
     """
     Representation of a single unit of the course.
     """
-    def __init__(self, videos, resources_urls):
+    def __init__(self, videos=None, resources_urls=None, position=None, url=None, name=None):
         """
+        @param position: Integer position of the unit in a subsection. Starts at 1
+        @type position: int
+
+        @param url: URL for the unit
+        @type url: str
+
+        @param name: Name of the unit
+        @type name: str
+
         @param videos: List of videos present in the unit.
         @type videos: [Video]
 
@@ -128,8 +138,15 @@ class Unit(object):
             and youtube links.
         @type resources_urls: [str]
         """
+        self.position = position 
+        self.url = url
+        self.name = name
         self.videos = videos
         self.resources_urls = resources_urls
+
+    
+    def __repr__(self):
+        return self.name + ": " + self.url
 
 
 class Video(object):

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# August 2019. OEDO Analytics Group
+# November 2019, Robert Gold
 #
 # Main module for crawling text, quiz and video components using edx-dl downloader. 
-# Original source code is modified from: https://github.com/coursera-dl/edx-dl/blob/master/edx_dl/edx_dl.py
+# Original source code is modified from: https://github.com/TokyoTechX/web-crawler
 #===========================================================================================================
 
 import argparse
@@ -22,6 +22,7 @@ import pandas as pd
 import tarfile
 import shutil
 import ffmpeg
+import requests
 
 from webvtt import WebVTT
 from datetime import datetime
@@ -83,115 +84,115 @@ COURSEWARE_SEL = OPENEDX_SITES['edx']['courseware-selector']
 
 
 def change_openedx_site(site_name):
-    """
-    Changes the openedx website for the given one via the key
-    """
-    global BASE_URL
-    global EDX_HOMEPAGE
-    global LOGIN_API
-    global DASHBOARD
-    global COURSEWARE_SEL
-
-    sites = sorted(OPENEDX_SITES.keys())
-    if site_name not in sites:
-        logging.error("OpenEdX platform should be one of: %s", ', '.join(sites))
-        sys.exit(ExitCode.UNKNOWN_PLATFORM)
-
-    BASE_URL = OPENEDX_SITES[site_name]['url']
-    EDX_HOMEPAGE = BASE_URL + '/login_ajax'
-    LOGIN_API = BASE_URL + '/login_ajax'
-    DASHBOARD = BASE_URL + '/dashboard'
-    COURSEWARE_SEL = OPENEDX_SITES[site_name]['courseware-selector']
+        """
+        Changes the openedx website for the given one via the key
+        """
+        global BASE_URL
+        global EDX_HOMEPAGE
+        global LOGIN_API
+        global DASHBOARD
+        global COURSEWARE_SEL
+        
+        sites = sorted(OPENEDX_SITES.keys())
+        
+        if site_name not in sites:
+                logging.error("OpenEdX platform should be one of: %s", ', '.join(sites))
+                sys.exit(ExitCode.UNKNOWN_PLATFORM)
+                
+        BASE_URL = OPENEDX_SITES[site_name]['url']
+        EDX_HOMEPAGE = BASE_URL + '/login_ajax'
+        LOGIN_API = BASE_URL + '/login_ajax'
+        DASHBOARD = BASE_URL + '/dashboard'
+        COURSEWARE_SEL = OPENEDX_SITES[site_name]['courseware-selector']
 
 
     
 #Parse the arguments passed to the program on the command line.
 def parse_args():
         
-        parser = argparse.ArgumentParser(prog='edx-crawler',
-                                                                         description='Crawling text from the OpenEdX platform')
+        parser = argparse.ArgumentParser(prog='edx-crawler', description='Crawling text from the OpenEdX platform')
         
         # optional arguments
         parser.add_argument('-url',
-                                                '--course-urls',
-                                                dest='course_urls',
-                                                nargs='*',
-                                                action='store',
-                                                required=True,
-                                                help='target course urls'
-                                                '(e.g., https://courses.edx.org/courses/course-v1:TokyoTechX+GeoS101x+2T2016/course/)')
+                            '--course-urls',
+                            dest='course_urls',
+                            nargs='*',
+                            action='store',
+                            required=True,
+                            help='target course urls'
+                            '(e.g., https://courses.edx.org/courses/course-v1:TokyoTechX+GeoS101x+2T2016/course/)')
 
         parser.add_argument('-u',
-                                                '--username',
-                                                dest='username',
-                                                required=True,
-                                                action='store',
-                                                help='your edX username (email)')
+                            '--username',
+                            dest='username',
+                            required=True,
+                            action='store',
+                            help='your edX username (email)')
 
         parser.add_argument('-p',
-                                                '--password',
-                                                dest='password',
-                                                action='store',
-                                                help='your edX password'
-                                                'beware: it might be visible to other users on your system')
-
+                            '--password',
+                            dest='password',
+                            action='store',
+                            help='your edX password'
+                            'beware: it might be visible to other users on your system')
+        
         parser.add_argument('-d',
-                                                '--html-dir',
-                                                dest='html_dir',
-                                                action='store',
-                                                help='directory to store data',
-                                                default='HTMLs')
-
+                            '--html-dir',
+                            dest='html_dir',
+                            action='store',
+                            help='directory to store data',
+                            default='HTMLs')
+        
         parser.add_argument('-x',
-                                                '--platform',
-                                                dest='platform',
-                                                action='store', 
-                                                help='default is edx platform',
-                                                default='edx')
-
+                            '--platform',
+                            dest='platform',
+                            action='store', 
+                            help='default is edx platform',
+                            default='edx')
+        
         parser.add_argument('--filter-section',
-                                                dest='filter_section',
-                                                action='store',
-                                                default=None,
-                                                help='filters sections to be downloaded')
-
+                            dest='filter_section',
+                            action='store',
+                            default=None,
+                            help='filters sections to be downloaded')
+        
         parser.add_argument('--list-file-formats',
-                                                dest='list_file_formats',
-                                                action='store_true',
-                                                default=False,
-                                                help='list the default file formats extracted')
-
+                            dest='list_file_formats',
+                            action='store_true',
+                            default=False,
+                            help='list the default file formats extracted')
+        
         parser.add_argument('--file-formats',
-                                                dest='file_formats',
-                                                action='store',
-                                                default=None,
-                                                help='appends file formats to be extracted (comma '
-                                                'separated)')
-
+                            dest='file_formats',
+                            action='store',
+                            default=None,
+                            help='appends file formats to be extracted (comma '
+                            'separated)')
+        
         parser.add_argument('--overwrite-file-formats',
-                                                dest='overwrite_file_formats',
-                                                action='store_true',
-                                                default=False,
-                                                help='if active overwrites the file formats to be '
-                                                'extracted')
+                            dest='overwrite_file_formats',
+                            action='store_true',
+                            default=False,
+                            help='if active overwrites the file formats to be '
+                            'extracted')
 
         parser.add_argument('--sequential',
-                                                dest='sequential',
-                                                action='store_true',
-                                                default=False,
-                                                help='extracts the resources from the pages sequentially')
+                            dest='sequential',
+                            action='store_true',
+                            default=False,
+                            help='extracts the resources from the pages sequentially')
 
         parser.add_argument('--quiet',
-                                                dest='quiet',
-                                                action='store_true',
-                                                default=False,
-                                                help='omit as many messages as possible, only printing errors')
-
+                            dest='quiet',
+                            action='store_true',
+                            default=False,
+                            help='omit as many messages as possible, only printing errors')
+        
         parser.add_argument('--debug',
-                                                dest='debug',
-                                                action='store_true',
-                                                default=False,
-                                                help='print lots of debug information')
+                            dest='debug',
+                            action='store_true',
+                            default=False,
+                            help='print lots of debug information')
         parser.add_argument('--list-courses',
                             dest='list_courses',
                             action='store_true',
@@ -203,14 +204,11 @@ def parse_args():
         # Initialize the logging system first so that other functions
         # can use it right away.
         if args.debug:
-                logging.basicConfig(level=logging.DEBUG,
-                                                        format='%(name)s[%(funcName)s] %(message)s')
+                logging.basicConfig(level=logging.DEBUG, format='%(name)s[%(funcName)s] %(message)s')
         elif args.quiet:
-                logging.basicConfig(level=logging.ERROR,
-                                                        format='%(name)s: %(message)s')
+                logging.basicConfig(level=logging.ERROR, format='%(name)s: %(message)s')
         else:
-                logging.basicConfig(level=logging.INFO,
-                                                        format='%(message)s')
+                logging.basicConfig(level=logging.INFO, format='%(message)s')
 
         return args
 
@@ -274,11 +272,12 @@ def get_available_sections(url, headers):
 
         page = get_page_contents(url, headers)
         page_extractor = get_page_extractor(url)
+
         sections = page_extractor.extract_sections_from_html(page, BASE_URL)
 
         logging.debug("Extracted sections: " + str(sections))
+        
         return sections
-
 
 def edx_login(url, headers, username, password):
         """
@@ -405,6 +404,9 @@ def _display_sections(sections):
                 for subsection in section.subsections:
                         logging.info('  %s', subsection.name)
 
+                        for unit in subsection.units:
+                                logging.info('    %s', unit.name)
+
 
 def parse_courses(args, available_courses):
         """
@@ -468,6 +470,7 @@ def _display_selections(selections):
         """
         Displays the course, sections and subsections to be downloaded
         """
+
         for selected_course, selected_sections in selections.items():
                 logging.info('Downloading %s [%s]',
                                          selected_course.name, selected_course.id)
@@ -790,7 +793,6 @@ def extract_video_component(args,coursename,headers,soup,section,subsection,unit
 
 
 def save_html_to_file(args, selections, all_urls, headers):
-
         sub_idx = 0
         prob_type_set = []
         counter_video = 1
@@ -951,9 +953,23 @@ def save_html_to_file(args, selections, all_urls, headers):
         make_tarfile(os.path.join(args.html_dir, coursename,'sourcefile.tar.gz'),os.path.join(args.html_dir, coursename,'source_html_file'))
 
 
+def save_unit_urls_to_file(args, selections):
+        logging.info("Saving unit urls to file")
+        
+        url_to_unit = {}
+        
+        for course, sections in selections.items():
+                for section in sections:
+                        for subsection in section.subsections:
+                                for unit in subsection.units:
+                                        url_to_unit[unit.name] = unit.url
+                                        
+        s = pd.Series(url_to_unit)
+        with open(os.path.join(args.html_dir, directory_name(course.name), "extra_urls.csv"), "w") as f:
+                s.to_csv(f, header=['url'], index_label='name')
+                  
 
 def make_tarfile(zip_path,sourcedir):
-
         print ("source file is being compressed as tar.gz ")
         with tarfile.open(zip_path, 'w:gz') as tar:
                 for f in os.listdir(sourcedir):
@@ -961,11 +977,28 @@ def make_tarfile(zip_path,sourcedir):
                 tar.close()
         shutil.rmtree(sourcedir)
         
+def correct_urls(selections):
+        logging.info("Correcting unit urls")
 
+        with requests.Session() as s:
+                r = s.get(LOGIN_API)
+                token = r.cookies['csrftoken']
+                post_data = urlencode({'email': args.username,
+                                       'password': args.password,
+                                       'remember': False,
+                                       'csrfmiddlewaretoken': token}).encode('utf-8')
+
+                s.post(LOGIN_API, data=post_data, headers=headers)
+                
+                for course, sections in selections.items():
+                        for section in sections:
+                                for subsection in section.subsections:
+                                        for unit in subsection.units:
+                                                r = s.get(unit.url)
+                                                unit.url = r.url
 
 
 def main():
-
         start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         args = parse_args()
         file_formats = parse_file_formats(args)
@@ -995,46 +1028,45 @@ def main():
         selected_courses = parse_courses(args, available_courses)
 
         # Parse the sections and build the selections dict filtered by sections
-        if args.platform == 'edx':
-                all_selections = {selected_course:
-                                                  get_available_sections(selected_course.url.replace('info', 'course'), headers)
-                                                  for selected_course in selected_courses}
-        else:
-                all_selections = {selected_course:
-                                                  get_available_sections(selected_course.url.replace('info', 'courseware'), headers)
-                                                  for selected_course in selected_courses}
+        replace_with = 'course' if args.platform == 'edx' else 'courseware'
+
+        all_selections = {course: get_available_sections(course.url.replace('info', replace_with), headers) for course in selected_courses}
 
         selections = parse_sections(args, all_selections)
         _display_selections(selections)
 
+        correct_urls(selections)
+
+                                        
         # Extract the unit information (downloadable resources)
         # This parses the HTML of all the subsection.url and extracts
         # the URLs of the resources as Units.
-        all_urls = [subsection.url
-                                for selected_sections in selections.values()
-                                for selected_section in selected_sections
-                                for subsection in selected_section.subsections]
+        # all_urls = [subsection.url
+        #                         for selected_sections in selections.values()
+        #                         for selected_section in selected_sections
+        #                         for subsection in selected_section.subsections]
+        
+        # extractor = extract_all_units_in_parallel
+        # if args.sequential:
+        #         extractor = extract_all_units_in_sequence
 
-        extractor = extract_all_units_in_parallel
-        if args.sequential:
-                extractor = extract_all_units_in_sequence
+        # all_units = extractor(all_urls, headers, file_formats)
 
-        all_units = extractor(all_urls, headers, file_formats)
+        # parse_units(selections)
 
-        parse_units(selections)
+        # # This removes all repeated important urls
+        # # FIXME: This is not the best way to do it but it is the simplest, a
+        # # better approach will be to create symbolic or hard links for the repeated
+        # # units to avoid losing information
+        # filtered_units = remove_repeated_urls(all_units)
+        # num_all_urls = num_urls_in_units_dict(all_units)
+        # num_filtered_urls = num_urls_in_units_dict(filtered_units)
+        # logging.warning('Removed %d duplicated urls from %d in total',
+        #                          (num_all_urls - num_filtered_urls), num_all_urls)
 
-        # This removes all repeated important urls
-        # FIXME: This is not the best way to do it but it is the simplest, a
-        # better approach will be to create symbolic or hard links for the repeated
-        # units to avoid losing information
-        filtered_units = remove_repeated_urls(all_units)
-        num_all_urls = num_urls_in_units_dict(all_units)
-        num_filtered_urls = num_urls_in_units_dict(filtered_units)
-        logging.warning('Removed %d duplicated urls from %d in total',
-                                 (num_all_urls - num_filtered_urls), num_all_urls)
-
-        #saving html content as course unit
-        save_html_to_file(args, selections, all_urls, headers)
+        # #saving html content as course unit
+        # save_html_to_file(args, selections, all_urls, headers)
+        save_unit_urls_to_file(args, selections)
                 
         
 if __name__ == '__main__':
@@ -1042,4 +1074,5 @@ if __name__ == '__main__':
                 main()
         except KeyboardInterrupt:
                 logging.warning("\n\nCTRL-C detected, shutting down....")
+                        
                 sys.exit(ExitCode.OK)
